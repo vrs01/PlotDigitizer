@@ -40,9 +40,11 @@ class Point:
     def draw_label(self, label, color='blue'):
         loc = list(self.point)
         if label[0] == 'x':
-            loc[1] += 10
+            loc[0] -= 0
+            loc[1] -= 30
         else:
-            loc[0] += 10
+            loc[0] -= 30
+            loc[1] -= 0
         return self.canvas.draw_text(label, location=loc, color=color)
 
     def erase(self):
@@ -80,8 +82,9 @@ class AxisLine(Line):
 
 
 class Axes:
-    def __init__(self, canvas):
+    def __init__(self, canvas, window=None):
         self.canvas = canvas
+        self.window = window
         self.lines: T.Dict[str, T.Optional[Line]] = dict(x=None, y=None)
         self.points: T.Dict[str, T.List[Point]] = dict(x=[], y=[])
 
@@ -97,13 +100,6 @@ class Axes:
 
     def add_axis_point(self, pt, color="red"):
         logger.info(f" Adding point {pt=}")
-        pname = f"point{len(self.points['x'])+len(self.points['y'])}"
-        try:
-            txtelem = self.window[pname]
-            logger.info(f" Text element {txtelem}")
-            txtelem.update(value=f"{pt[0]}, {pt[1]}")
-        except Exception:
-            logger.warning(f"{pname} not found.")
         if len(self.points["x"]) < 2:
             p = Point(
                 pt,
@@ -122,6 +118,12 @@ class Axes:
                 label=f"y{len(self.points['y'])}",
             )
             self.points["y"].append(p)
+
+        try:
+            txtelem = self.window[p.label]
+            txtelem.update(value=f"{p.label}={p.point}")
+        except Exception:
+            logger.warning(f"{p.label} not found.")
 
         if len(self.points["x"]) > 1 or len(self.points["y"]) > 1:
             self.update_axis()
@@ -157,6 +159,9 @@ class GUI:
             enable_events=True,
             key="-GRAPH-",
         )
+
+        size1 = (15, 1)
+        size2 = (10, 1)
         self.settings = sg.Column(
             [
                 [sg.T("Background"), sg.Input(key="background", size=(10, 1))],
@@ -164,24 +169,26 @@ class GUI:
                 [sg.HorizontalSeparator()],
                 # These are updated when points are added.
                 [
-                    sg.T("X Point 1", key="point0", size=(10, 1)),
-                    sg.Input(key="x0", size=(5, 1)),
+                    sg.T("x0", key="x0", size=size1),
+                    sg.Input(key="x0val", size=size2),
                 ],
                 [
-                    sg.T("X Point 2", key="point1", size=(10, 1)),
-                    sg.Input(key="x1", size=(5, 1)),
+                    sg.T("x1", key="x1", size=size1),
+                    sg.Input(key="x1val", size=size2),
                 ],
                 [sg.Button("Clear X-axis")],
                 [sg.HorizontalSeparator()],
                 [
-                    sg.T("Y Point 1", key="point2", size=(10, 1)),
-                    sg.Input(key="y0", size=(5, 1)),
+                    sg.T("y0", key="y0", size=size1),
+                    sg.Input(key="y0val", size=size2),
                 ],
                 [
-                    sg.T("Y Point 2", key="point3", size=(10, 1)),
-                    sg.Input(key="y1", size=(5, 1)),
+                    sg.T("y1", key="y1", size=size1),
+                    sg.Input(key="y1val", size=size2),
                 ],
                 [sg.Button("Clear Y-axis")],
+                [sg.HorizontalSeparator()],
+                [sg.Button("Extract Data")],
             ]
         )
         self.canvas_image = None
@@ -207,7 +214,7 @@ class GUI:
         self.canvas.bind("<Shift-L>", "+Shift+")
         self.canvas.bind("<Shift-R>", "+Shift+")
         self.points = dict(x=[], y=[], z=[])
-        self.axes: Axes = Axes(canvas=self.canvas)
+        self.axes: Axes = Axes(canvas=self.canvas, window=self.window)
 
     def draw_grid(self, color="lightgray", x=True, y=True, step: int = 20):
         w, h = self.canvas_size
@@ -229,8 +236,8 @@ class GUI:
             im.resize(self.canvas_size)
         imw, imh = im.size
         self.canvas_image = tkcanvas.create_image(
-            offset_w,
-            self.canvas_size[1] - imh - offset_h,
+            20+offset_w,
+            self.canvas_size[1] - imh - offset_h - 20,
             image=self.photo,
             anchor="nw",
         )
@@ -281,16 +288,10 @@ class GUI:
                 logger.info("Done dragging")
             elif "Clear X-axis" in event:
                 logger.info("Clearing all x-axis.")
-                for p in self.points["x"]:
-                    p.erase()
-                    self.axes.erase("x")
-                self.points["x"] = []
+                self.axes.erase("x")
             elif "Clear Y-axis" in event:
                 logger.info("Clearing all points y-axis")
-                for p in self.points["y"]:
-                    p.erase()
-                    self.axes.erase("y")
-                self.points["y"] = []
+                self.axes.erase("y")
             elif "Locate" in event:
                 whichPoint = int(event[-1])
                 assert whichPoint in [0, 1, 2]
