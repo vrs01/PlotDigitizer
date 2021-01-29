@@ -305,6 +305,9 @@ class GUI:
                 except Exception as e:
                     logger.warning(f"Failed to locate point: {e}")
                     sg.Popup("Error", f"Invalid coordinates {x} {y}")
+            elif event == 'Extract data':
+                traj = plotdigitizer.core.extract_data(img)
+                logger.debug(traj)
             else:
                 logger.debug(f"unhandled {event}, {values}")
 
