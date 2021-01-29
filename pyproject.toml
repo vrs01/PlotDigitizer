@@ -16,6 +16,8 @@ matplotlib = "^3.3.4"
 PySimpleGUI = "^4.34.0"
 typer = "^0.3.2"
 loguru = "^0.5.3"
+screeninfo = "^0.6.7"
+Pillow = "^8.1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.2"
