@@ -6,6 +6,7 @@ from loguru import logger
 import cv2
 import tempfile
 import plotdigitizer.core as core
+import numpy as np
 
 import typer
 from pathlib import Path
@@ -22,7 +23,7 @@ def run(
     px: T.List[str] = typer.Option([], "--px-on-image", "-l"),
     plot: bool = True,
     csvfile: T.Optional[Path] = None,
-):
+) -> T.List[core.Point2]:
     global TEMP_
     logger.info("Got file: %s" % infile)
     img = cv2.imread(str(infile), cv2.IMREAD_GRAYSCALE)
@@ -42,16 +43,17 @@ def run(
         yoffset = img.shape[0]
         coords = [(x, yoffset - y) for (x, y) in coords]
 
-    traj = core.process(img, points=points, coords=coords)
+    traj = core.compute_trajectory(img, points=points, coords=coords)
 
     if plot:
         core.plot_traj(traj, img)
 
-    csvfile = Path(f"{infile}.traj.csv") if csvfile is None else csvfile
-    with open(csvfile, "w") as f:
-        for r in traj:
-            f.write("%g %g\n" % (r))
-    logger.info("Wrote trajectory to %s" % csvfile)
+    if csvfile is not None:
+        with open(csvfile, "w") as f:
+            for r in traj:
+                f.write("%g %g\n" % (r))
+        logger.info("Wrote trajectory to %s" % csvfile)
+    return traj
 
 
 def main():

@@ -7,7 +7,6 @@ __maintainer__ = "Dilawar Singh"
 __email__ = "dilawar.s.rajput@gmail.com"
 __status__ = "Development"
 
-import os
 import typing as T
 import numpy as np
 import cv2
@@ -94,8 +93,12 @@ def ask_user_to_locate_points(points: T.List[Point2], img: np.array) -> T.List[P
     return coords
 
 
-def list_to_points(points) -> T.List[T.List[float]]:
-    ps = [[float(a) for a in x.split(",")] for x in points]
+def list_to_points(points) -> T.List[Point2]:
+    ps = []
+    for x in points:
+        fs = x.split(",")
+        assert len(fs) == 2
+        ps.append((float(fs[0]), float(fs[1])))
     return ps
 
 
@@ -108,8 +111,8 @@ def compute_scaling_offset(p, P):
     return ((sX, sY), (offX, offY))
 
 
-def findScalingAndPrepareImage(
-    img, points: T.List[Point2], coords: T.List[Point2], extra=0
+def find_scaling_offset(
+    img, points: T.List[Point2], coords: T.List[Point2], params, *, skip_nrowscols=0
 ):
     # extra: extra rows and cols to erase. Help in containing error near axis.
     # compute the transformation between old and new axis.
@@ -118,12 +121,12 @@ def findScalingAndPrepareImage(
     # x-axis and y-axis chopping can be computed by offset.
     offX, offY = scalingOffset[1]
     offCols, offRows = int(round(offX)), int(round(offY))
-    img[r - offRows - extra :, :] = params_["background"]
-    img[:, : offCols + extra] = params_["background"]
+    img[r - offRows - skip_nrowscols :, :] = params["background"]
+    img[:, : offCols + skip_nrowscols] = params["background"]
     return scalingOffset
 
 
-def find_trajectory(img, pixel, offset: T.List[Point2], error=0, **kwargs):
+def find_trajectory(img, *, pixel, offset: T.List[Point2], **kwargs) -> T.List[Point2]:
     res = []
     r, c = img.shape
     new = np.zeros_like(img)
@@ -152,10 +155,10 @@ def find_trajectory(img, pixel, offset: T.List[Point2], error=0, **kwargs):
         res.append((x1, y1))
 
     # sort by x-axis.
-    res = sorted(res)
+    # res = sorted(res)
     if kwargs.get("plot", False):
         plot_traj(res, img)
-    return res, np.vstack((img, new))
+    return res
 
 
 def compute_foregrond_background_stats(img) -> T.Dict[str, T.Any]:
@@ -172,12 +175,14 @@ def compute_foregrond_background_stats(img) -> T.Dict[str, T.Any]:
     return params
 
 
-def process(img, *, points, coords, **kwargs):
-    global params_
-    params_ = compute_foregrond_background_stats(img)
-    extra = findScalingAndPrepareImage(
-        img, points, coords, extra=int(kwargs.get("erase_near_axis", 0))
+def compute_trajectory(img, *, points, coords, **kwargs) -> T.List[Point2]:
+    params = compute_foregrond_background_stats(img)
+    scalingOffset = find_scaling_offset(
+        img,
+        points,
+        coords,
+        params=params,
+        skip_nrowscols=int(kwargs.get("erase_near_axis", 0)),
     )
-    traj, img = find_trajectory(img, int(params_["foreground"]), extra)
-    save_debug_imgage("final.png", img)
+    traj = find_trajectory(img, pixel=params["foreground"], offset=scalingOffset)
     return traj
