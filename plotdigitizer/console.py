@@ -5,7 +5,7 @@ import typing as T
 from loguru import logger
 import cv2
 import tempfile
-import plotdigitizer as pd
+import plotdigitizer.core as core
 
 import typer
 from pathlib import Path
@@ -18,36 +18,36 @@ TEMP_ = Path(tempfile.gettempdir())
 @app.command()
 def run(
     infile: Path,
-    data_point: T.List[T.List[float]],
-    location: T.List[T.List[float]],
+    xy: T.List[str] = typer.Option(..., "--xy-on-plot", "-p"),
+    px: T.List[str] = typer.Option([], "--px-on-image", "-l"),
     plot: bool = True,
     csvfile: T.Optional[Path] = None,
 ):
     global TEMP_
     logger.info("Got file: %s" % infile)
     img = cv2.imread(str(infile), cv2.IMREAD_GRAYSCALE)
-    pd.save_debug_imgage(TEMP_ / "_original.png", img)
+    core.save_debug_imgage(TEMP_ / "_original.png", img)
 
-    points = pd.list_to_points(data_point)
-    coords = pd.list_to_points(location)
+    points = core.list_to_points(xy)
+    coords = core.list_to_points(px)
 
     if len(coords) != len(points):
         logger.debug(
             "Either location is not specified or their numbers don't"
-            " match with given datapoints."
+            " match with given xy."
         )
-        pd.ask_user_to_locate_points(points, img)
+        core.ask_user_to_locate_points(points, img)
     else:
         # User specified coordinates are in opencv axis i.e. top-left is 0,0
         yoffset = img.shape[0]
         coords = [(x, yoffset - y) for (x, y) in coords]
 
-    traj = pd.process(img)
+    traj = core.process(img, points=points, coords=coords)
 
     if plot:
-        pd.plot_traj(traj)
+        core.plot_traj(traj, img)
 
-    csvfile = f"{infile}.traj.csv" if csvfile is None else csvfile
+    csvfile = Path(f"{infile}.traj.csv") if csvfile is None else csvfile
     with open(csvfile, "w") as f:
         for r in traj:
             f.write("%g %g\n" % (r))

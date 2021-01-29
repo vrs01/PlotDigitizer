@@ -12,7 +12,7 @@ import typing as T
 import numpy as np
 import cv2
 from collections import defaultdict
-from logruru import logger
+from loguru import logger
 
 windowName_ = "PlotDigitizer"
 ix_, iy_ = 0, 0
@@ -31,7 +31,7 @@ def find_center(vec):
     return vec.mean()
 
 
-def plot_traj(traj):
+def plot_traj(traj, img):
     import matplotlib as mpl
     import matplotlib.pyplot as plt
 
@@ -39,7 +39,7 @@ def plot_traj(traj):
     x, y = zip(*traj)
     plt.figure()
     plt.subplot(211)
-    plt.imshow(img_, interpolation="none", cmap="gray")
+    plt.imshow(img, interpolation="none", cmap="gray")
     plt.title("Original")
     plt.subplot(212)
     plt.title("Reconstructed")
@@ -50,7 +50,7 @@ def plot_traj(traj):
 
 
 def save_debug_imgage(filename, img):
-    cv2.imwrite(filename, img)
+    cv2.imwrite(f"{filename}", img)
 
 
 def click_points(img: np.array, coords: T.List[Point2], event, x, y, flags, params):
@@ -123,7 +123,7 @@ def findScalingAndPrepareImage(
     return scalingOffset
 
 
-def find_trajectory(img, pixel, offset: T.List[Point2], error=0):
+def find_trajectory(img, pixel, offset: T.List[Point2], error=0, **kwargs):
     res = []
     r, c = img.shape
     new = np.zeros_like(img)
@@ -153,8 +153,8 @@ def find_trajectory(img, pixel, offset: T.List[Point2], error=0):
 
     # sort by x-axis.
     res = sorted(res)
-    if args_.plot:
-        plot_traj(res)
+    if kwargs.get("plot", False):
+        plot_traj(res, img)
     return res, np.vstack((img, new))
 
 
@@ -172,11 +172,12 @@ def compute_foregrond_background_stats(img) -> T.Dict[str, T.Any]:
     return params
 
 
-def process(img):
+def process(img, *, points, coords, **kwargs):
     global params_
-    global args_
     params_ = compute_foregrond_background_stats(img)
-    T = findScalingAndPrepareImage(img, extra=args_.erase_near_axis)
-    traj, img = find_trajectory(img, int(params_["foreground"]), T)
+    extra = findScalingAndPrepareImage(
+        img, points, coords, extra=int(kwargs.get("erase_near_axis", 0))
+    )
+    traj, img = find_trajectory(img, int(params_["foreground"]), extra)
     save_debug_imgage("final.png", img)
     return traj
