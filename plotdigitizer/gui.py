@@ -37,9 +37,9 @@ class Point:
         if self.label:
             self.tkid2 = self.draw_label(self.label)
 
-    def draw_label(self, label, color='blue'):
+    def draw_label(self, label, color="blue"):
         loc = list(self.point)
-        if label[0] == 'x':
+        if label[0] == "x":
             loc[0] -= 0
             loc[1] -= 30
         else:
@@ -236,7 +236,7 @@ class GUI:
             im.resize(self.canvas_size)
         imw, imh = im.size
         self.canvas_image = tkcanvas.create_image(
-            20+offset_w,
+            20 + offset_w,
             self.canvas_size[1] - imh - offset_h - 20,
             image=self.photo,
             anchor="nw",
@@ -305,7 +305,7 @@ class GUI:
                 except Exception as e:
                     logger.warning(f"Failed to locate point: {e}")
                     sg.Popup("Error", f"Invalid coordinates {x} {y}")
-            elif event == 'Extract data':
+            elif event == "Extract data":
                 traj = plotdigitizer.core.extract_data(img)
                 logger.debug(traj)
             else:

@@ -5,10 +5,10 @@ import typing as T
 from loguru import logger
 import cv2
 import numpy as np
-import itertools
 import tempfile
 import plotdigitizer.core as core
-import math
+import plotdigitizer.helper as helper
+import plotdigitizer.axis
 
 import typer
 from pathlib import Path
@@ -63,45 +63,27 @@ def run(
         logger.info("Wrote trajectory to %s" % csvfile)
     return traj
 
-def angle(line1, line2):
-    x1, y1, x2, y2 = line1
-    m1 = math.atan2(y1-y2, x1-x2)
-    x1, y1, x2, y2 = line2
-    m2 = math.atan2(y1-y2, x1-x2)
-    return int((m1 - m2) / math.pi * 180)
-
-def find_axis_lines(img):
-    edges = cv2.Canny(img, 50, 150, apertureSize=3)
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, 120, minLineLength=200, maxLineGap=100)
-    N = len(lines)
-    res = []
-    for i in range(N):
-        for ii in range(i, N):
-            l1, l2 = lines[i][0], lines[ii][0]
-            th = angle(l1, l2)
-            if abs(th - 90) < 5:
-                res.append(l1)
-                res.append(l2)
-    return res
-
 @app.command()
-def feeling_lucky(imgfile: Path):
-    assert imgfile.exists()
-    logger.info(f'Reading {imgfile}')
-    img = cv2.imread(str(imgfile), 0)
-    lines = find_axis_lines(img)
-    img1 = np.zeros_like(img)
-    for line in lines:
-        x1, y1, x2, y2 = line
-        print(x1, y1, x2, y2)
-        cv2.line(img1, (x1, y1), (x2, y2), 150, 2)
+def locate_axis(infile: Path):
+    """Locate axis.
+    """
+    img = cv2.imread(str(infile), 0)
+    lines = plotdigitizer.axis.find_axis_lines(img)
 
-    save_frame(img1, 'temp.png')
+    img2 = np.zeros_like(img)
+    for l in lines:
+        helper.draw_line(img2, l)
+    helper.display_img(img2)
 
 
+if __name__ == "__main__":
+    app()
 
+
+def main():
+    app()
 
 if __name__ == '__main__':
-    app()
+    main()
 
 
